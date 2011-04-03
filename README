@@ -1,0 +1,73 @@
+
+
+PicBackFlick -- my favourite Flickr back up utility so far
+
+Features:
+ - fetch recently changed (or all) images
+ - collects a some additional data about each photo
+ - locally web browsable content store
+ - suitable for running via cron long term to keep collection current
+
+
+This is an early but highly functional Flickr backup utility. It works
+fine for getting recently changed images and a small slice of the related
+photo data. My intent is to expand this so that all related data is collected.
+
+
+Not yet but in the works:
+ - support for video
+ - better html templates
+ - store all photo data Flickr can provide
+ - sets, collections, galleries
+ - improve photo data storage scheme
+ - several items noted inside the script (look for TODO)
+ - etc
+
+
+Quick Start Guide:
+
+1- You'll need the Python Flickr API (previously known as "Beej's Python Flickr API")
+   If you have a recent Debian / Ubuntu setup you should be able to install it via--
+     sudo apt-get install python-flickrapi
+   Otherwise, see the installation instructions at http://stuvel.eu/flickrapi
+
+2- You need your own Flickr API key and secret, this only takes a moment from:
+     http://www.flickr.com/services/api/keys/apply/
+    
+3- Set up your config file. picbackflick.py will create an example for you:
+
+     bash$  ./picbackflick.py -d 3
+     ~/.picbackflick.conf doesn't exist, a new one has been created for you which you must now edit
+
+4- Do the trick. This will grab any photos updated in the last 3 days. 
+
+     bash$  ./picbackflick.py -d 3
+   
+   The first time you run the application it will walk you through an authorisation step
+   which is described here: http://stuvel.eu/media/flickrapi-docs/documentation/#authentication
+
+5- Admire your efforts. Copy photos.html into ~/flickr_backups and view it in a web browser.
+   (Make sure you're looking at the one in that directory.)
+   You should see a thumbnail for each photo along with some other info.
+   
+Run the script with -h to see more options.
+
+
+FILES:
+
+ ~/.picbackflick.conf is the application config file
+ ~/flickr_backups/img/ contain your photos
+ ~/flickr_backups/info/ contains a pile of json style files, one per photo
+ ~/flickr_backups/photo_db.js is all the json style files concatenated plus a little additional info
+ ~/flickr_backups/last_updated is the timestamp of the last successful update
+
+
+COPYING:
+
+PicBackFlick is licensed under the AGPL instead of GPL because it's plausibly useful in a web
+context.
+
+
+Reed Wade <reedwade@gmail.com>, 2011-04-03
+
+
