@@ -1,10 +1,9 @@
 
-
 PicBackFlick -- my favourite Flickr back up utility so far
 
 Features:
  - fetch recently changed (or all) images
- - collects a some additional data about each photo
+ - collects some additional data about each photo
  - locally web browsable content store
  - suitable for running via cron long term to keep collection current
 
