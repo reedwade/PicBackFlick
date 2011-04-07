@@ -154,6 +154,26 @@ class Photo:
             out.write(img.read()) ## TODO: need to look at chunking this up instead of single buffer
             out.close()
             img.close()
+            
+            if self.vals['media'] == 'video':
+                # example:
+                # http://www.flickr.com/photos/reedwade/5597186999/play/orig/e45022b02e/
+                # this was taken from a single example and then looking at the output of a call to flickr.photos.getSizes()
+                url = "http://www.flickr.com/photos/%s/%s/play/orig/%s/" % (self.pbf.options.flickr_username, self.id, self.vals['originalsecret'])
+                self.vals['video_orig_path'] = os.path.join('video',self.id[-2:], self.id)
+                f = os.path.join(self.pbf.options.photos_path,self.vals['video_orig_path'])
+                
+                # ok, now we run into a problem. We don't know the extension for the video file. It could be one of several things.
+                # We have to fetch the file and check to content-disposition header to learn.
+                # But, maybe we already have the video file and don't want to re-fetch it. So, we look for files with the ID prefix.
+                
+                todo -- check for pre-existing video file and skip if found
+                
+                todo -- read url, look at header to learn file ext, set that and open the output for writing and then spin
+                ext = BLAH
+                self.vals['video_orig_path'] += '.'+ext
+                f += '.'+ext
+                
 
         ## meta data
         f = os.path.join(self.pbf.options.photos_path,'info',self.id[-2:],self.id+".js")
