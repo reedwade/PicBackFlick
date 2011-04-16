@@ -114,15 +114,15 @@ Info Store
         ~/flickr_backups/info/95/552833895_full.js
     
     Each photo also gets an expurgated json file which contains: title, video file extension (if there is
-    one), and the extension of the original photo url. It is named per:
+    one), and the extension of the original photo url (if not jpg). It is named per:
         ~/flickr_backups/info/95/552833895_.js
         
     Each photo record file is not strictly a json file, the photo value is given a variable assignment in
-    an object array called picbackflick_images. The key is composed of the photo upload time and the photo
+    an object array called pbf. The key is composed of the photo upload time and the photo
     ID. This allows the list to be reliably sorted as they appear in your photo stream. Photo IDs are not
     assigned in a strict time ordered sequence.
     
-        picbackflick_images['1300347013_5534286708'] = { "id": "5534286708", "title": "Dancing"... }
+        pbf['1300347013_5534286708'] = { "id": "5534286708", "t": "Dancing"... }
     
     The expurgated json files are also collected in a single file, ~/flickr_backups/photo_db.js
     As the json files are created they are appended to this file. Updated image data might be repeated

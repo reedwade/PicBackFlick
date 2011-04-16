@@ -231,13 +231,18 @@ class Photo:
 
         # we use dateuploaded as the key along with ID because we want to sort on this later
         # it turns out Flickr photo IDs aren't strictly sequential by time
-        json_full = "picbackflick_images['"+self.vals['dateuploaded']+"_"+self.id+"'] =\n "+json.dumps(self.vals)+"\n"
+        json_full = "pbf['"+self.vals['dateuploaded']+"_"+self.id+"'] =\n "+json.dumps(self.vals)+"\n"
         
+        # we're using short, ugly keys here to cut down on the size of the js db file
         simple = {}
-        for k in ['title','id','v_ext','originalformat']:
-            simple[k] = self.vals[k]
+        simple['t'] = self.vals['title']
+        # we only store if it's not jpg; jpg is the most likely format so we use that as a default to save space in the js db file
+        if self.vals['originalformat'] != 'jpg':
+            simple['o'] = self.vals['originalformat']
+        if self.vals['v_ext']:
+            simple['v'] = self.vals['v_ext']
         
-        json_simple = "picbackflick_images['"+self.vals['dateuploaded']+"_"+self.id+"'] =\n "+json.dumps(simple)+"\n"
+        json_simple = "pbf['"+self.vals['dateuploaded']+"_"+self.id+"'] =\n "+json.dumps(simple)+"\n"
 
         f = os.path.join(self.pbf.options.photos_path,'info',self.id[-2:],self.id)
         if not os.path.exists(os.path.dirname(f)):
@@ -283,7 +288,7 @@ class PicBackFlick:
         filename = os.path.join(self.options.photos_path,"photo_db.js")
         self.info("writing "+filename)
         out = open(filename, "wb")
-        out.write("var picbackflick_images = {}\n")
+        out.write("var pbf = {}\n")
         out.write("var flickr_username = '"+self.options.flickr_username+"'\n")
 
         # walk the info directory and collect all the file contents
