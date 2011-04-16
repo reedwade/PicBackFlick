@@ -114,11 +114,9 @@ class Photo:
         ## TODO: extract much more information from photo_info which we want to archive
         
         
-    def get_image_url(self, size='o', prefix='http://'):
+    def get_image_url(self, size='o'):
         """
         Returns the url for this image at the given size.
-        
-        We use this function to generate local file names. So, the prefix is settable with the default being correct for the Flickr copy of the image.
         """
 
         valid_sizes = ['o','s','t','m','','z','b']
@@ -126,12 +124,21 @@ class Photo:
             raise RuntimeError("bad option for size: %s must be one of %s" % (size, str(valid_sizes)) )
             
         if size == 'o':
-            return "%sfarm%s.static.flickr.com/%s/%s_%s_o.%s" \
-                % (prefix, self.vals['farm'], self.vals['server'], self.id, self.vals['originalsecret'], self.vals['originalformat'])
+            return "http://farm%s.static.flickr.com/%s/%s_%s_o.%s" \
+                % (self.vals['farm'], self.vals['server'], self.id, self.vals['originalsecret'], self.vals['originalformat'])
         else:
-            return "%sfarm%s.static.flickr.com/%s/%s_%s%s%s.jpg" \
-                % (prefix, self.vals['farm'], self.vals['server'], self.id, self.vals['secret'], '' if size=='' else '_', size)
+            return "http://farm%s.static.flickr.com/%s/%s_%s%s%s.jpg" \
+                % (self.vals['farm'], self.vals['server'], self.id, self.vals['secret'], '' if size=='' else '_', size)
     
+    def get_image_path(self, size):
+        """
+        Returns the relative path for this image at the given size.
+        """
+        ext = 'jpg'
+        if size == 'o':
+            ext = self.vals['originalformat']
+        return "img/%s/%s/%s_%s.%s" % (size,  self.vals['id'][-2:], self.vals['id'], size, ext)
+
     @network_retry
     def save(self):
         """
@@ -140,7 +147,7 @@ class Photo:
         
         ## store images
         for size in self.pbf.options.store_image_sizes:
-            image_filename = self.get_image_url(size=size, prefix='img/')
+            image_filename = self.get_image_path(size=size)
             self.vals['image_'+size] = image_filename
 
             f = os.path.join(self.pbf.options.photos_path,image_filename)
@@ -161,7 +168,8 @@ class Photo:
                 out.write(buf)
             out.close()
             img.close()
-        
+            
+        self.vals['v_ext'] = False
         if self.vals['media'] == 'video':
             # example:
             # http://www.flickr.com/photos/reedwade/5597186999/play/orig/e45022b02e/
@@ -172,9 +180,8 @@ class Photo:
             #
             url = "http://www.flickr.com/photos/%s/%s/play/orig/%s/" % (self.pbf.options.flickr_username, self.id, self.vals['originalsecret'])
             
-            self.vals['video_orig_path'] = os.path.join('video',self.id[-2:], self.id) # 'video/89/123456789'
+            f = os.path.join(self.pbf.options.photos_path,'video',self.id[-2:], self.id) # 'video/89/123456789'
             
-            f = os.path.join(self.pbf.options.photos_path,self.vals['video_orig_path'])
             
             # ok, now we run into a problem. We don't know the extension for the video file. It could be one of several things.
             # We have to fetch the file and check the content-disposition header to learn it.
@@ -188,6 +195,7 @@ class Photo:
             found = glob.glob(f+'.*')
             if len(found):
                 self.pbf.info("skipping "+found[0])
+                self.vals['v_ext'] = found[0].split('.')[-1]
             else:
 
                 if not os.path.exists(os.path.dirname(f)):
@@ -204,7 +212,7 @@ class Photo:
                     self.pbf.info("failed to determine video file extension, using 'video' instead")
                     ext = 'video'
                     
-                self.vals['video_orig_path'] += '.'+ext
+                self.vals['v_ext'] = ext
                 f += '.'+ext
 
                 self.pbf.info("writing "+f)
@@ -220,14 +228,35 @@ class Photo:
                 img.close()          
 
         ## meta data
-        f = os.path.join(self.pbf.options.photos_path,'info',self.id[-2:],self.id+".js")
-        self.pbf.info("writing "+f)
+
+        # we use dateuploaded as the key along with ID because we want to sort on this later
+        # it turns out Flickr photo IDs aren't strictly sequential by time
+        json_full = "picbackflick_images['"+self.vals['dateuploaded']+"_"+self.id+"'] =\n "+json.dumps(self.vals)+"\n"
+        
+        simple = {}
+        for k in ['title','id','v_ext','originalformat']:
+            simple[k] = self.vals[k]
+        
+        json_simple = "picbackflick_images['"+self.vals['dateuploaded']+"_"+self.id+"'] =\n "+json.dumps(simple)+"\n"
+
+        f = os.path.join(self.pbf.options.photos_path,'info',self.id[-2:],self.id)
         if not os.path.exists(os.path.dirname(f)):
             os.makedirs(os.path.dirname(f))
-        out = open(f,'wb')
-        # we use dateuploaded as the key along with ID because we want to sort on this later
-        # it turns out Flickr photo IDs aren't strictly sequential
-        out.write("picbackflick_images['"+self.vals['dateuploaded']+"_"+self.id+"'] = "+json.dumps(self.vals)+"\n")
+            
+        self.pbf.info("writing "+f+'_full.js')
+        out = open(f+'_full.js','wb')
+        out.write(json_full)
+        out.close()
+        self.pbf.info("writing "+f+'_.js')
+        out = open(f+'_.js','wb')
+        out.write(json_simple)
+        out.close()
+        
+        # add to photo_db.js
+        f = os.path.join(self.pbf.options.photos_path,"photo_db.js")
+        self.pbf.info("appending "+f)
+        out = open(f,'ab')
+        out.write(json_simple)
         out.close()
 
 class PicBackFlick:
@@ -261,9 +290,10 @@ class PicBackFlick:
         
         for root, dirs, files in os.walk(os.path.join(self.options.photos_path,"info")):
             for f in files:
-                f = open(os.path.join(root,f))
-                out.write(f.read())
-                f.close()
+                if f[-4:] == '_.js':
+                    f = open(os.path.join(root,f))
+                    out.write(f.read())
+                    f.close()
             
         out.close()
 
@@ -334,7 +364,7 @@ photos_path = ~/flickr_backups
         
         self.options.last_updated_filename = os.path.join(self.options.photos_path,"last_updated")
         
-        self.options.store_image_sizes = ['s','','o']
+        self.options.store_image_sizes = ['s','b','o']
         
 
         
@@ -453,8 +483,8 @@ photos_path = ~/flickr_backups
 
                 photo.save()
 
-        if photo_count > 0:
-            self.update_web_pages()
+        #if photo_count > 0:
+        #    self.update_web_pages()
             
         self.set_last_updated_timestamp()
         
