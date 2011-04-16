@@ -67,6 +67,10 @@ function set_page(page) {
     for (i=0; i < page_size; i++) {
         p = image_list[i +offset]
         if (picbackflick_images[p]) {
+            v = ''
+            if (picbackflick_images[p].video_orig_path) {
+                v = '<a href="'+picbackflick_images[p].video_orig_path+'" target="_blank">[MOVIE]</a> '
+            }
             $('#photo_spots').append(
                 '<div class="photo_entry">'+
                 '<img src="'+picbackflick_images[p].image_s+'" width="75" height="75" />' +
@@ -78,6 +82,7 @@ function set_page(page) {
                 '<a href="'+picbackflick_images[p].image_+'" target="_blank">[M]</a> '+
                 '<a href="'+picbackflick_images[p].image_o+'" target="_blank">[O]</a> '+
                 '<a href="http://flickr.com/photos/'+flickr_username+'/'+picbackflick_images[p].id+'" target="_blank">[P]</a> '+
+                v+
                 '</span>'+
                 '</div>')
         }

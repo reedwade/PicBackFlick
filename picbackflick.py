@@ -40,6 +40,7 @@ import sys
 import os
 import time
 import urllib2
+import glob
 import json
 from optparse import OptionParser
 import ConfigParser
@@ -79,6 +80,8 @@ class Photo:
         print p.vals['description']
         print p.get_image_url('s')
     """
+    
+    BUF_SIZE = 1024*1024
     
     def __init__(self, pbf, id):
         self.pbf = pbf
@@ -146,40 +149,81 @@ class Photo:
                 self.pbf.info("skipping "+f)
                 continue
             if not os.path.exists(os.path.dirname(f)):
-                os.makedirs(os.path.dirname(f)) ## TODO: deal with failures in dir creation
+                os.makedirs(os.path.dirname(f))
                 
             self.pbf.info("writing "+f)
             img = urllib2.urlopen(self.get_image_url(size=size))
             out = open(f,'wb')
-            out.write(img.read()) ## TODO: need to look at chunking this up instead of single buffer
+            while True:
+                buf = img.read(self.BUF_SIZE)
+                if len(buf) == 0:
+                    break
+                out.write(buf)
             out.close()
             img.close()
+        
+        if self.vals['media'] == 'video':
+            # example:
+            # http://www.flickr.com/photos/reedwade/5597186999/play/orig/e45022b02e/
+            # this was taken from a single example and then looking at the output of a call to flickr.photos.getSizes()
+            #
+            # I don't find any documentation from Flickr saying this is or isn't the correct scheme for fetching video originals so
+            # I hope this works for the general case. It seems plausible
+            #
+            url = "http://www.flickr.com/photos/%s/%s/play/orig/%s/" % (self.pbf.options.flickr_username, self.id, self.vals['originalsecret'])
             
-            if self.vals['media'] == 'video':
-                # example:
-                # http://www.flickr.com/photos/reedwade/5597186999/play/orig/e45022b02e/
-                # this was taken from a single example and then looking at the output of a call to flickr.photos.getSizes()
-                url = "http://www.flickr.com/photos/%s/%s/play/orig/%s/" % (self.pbf.options.flickr_username, self.id, self.vals['originalsecret'])
-                self.vals['video_orig_path'] = os.path.join('video',self.id[-2:], self.id)
-                f = os.path.join(self.pbf.options.photos_path,self.vals['video_orig_path'])
-                
-                # ok, now we run into a problem. We don't know the extension for the video file. It could be one of several things.
-                # We have to fetch the file and check to content-disposition header to learn.
-                # But, maybe we already have the video file and don't want to re-fetch it. So, we look for files with the ID prefix.
-                
-                todo -- check for pre-existing video file and skip if found
-                
-                todo -- read url, look at header to learn file ext, set that and open the output for writing and then spin
-                ext = BLAH
+            self.vals['video_orig_path'] = os.path.join('video',self.id[-2:], self.id) # 'video/89/123456789'
+            
+            f = os.path.join(self.pbf.options.photos_path,self.vals['video_orig_path'])
+            
+            # ok, now we run into a problem. We don't know the extension for the video file. It could be one of several things.
+            # We have to fetch the file and check the content-disposition header to learn it.
+            # But, maybe we already have the video file and don't want to re-fetch it. So, we look for video files with the ID prefix.
+            
+            # check for pre-existing video file (any extension) and skip if found
+            #
+            # It's possible but unlikely they've replaced it with a new video file of a different extension.
+            # In that case we lose.
+            
+            found = glob.glob(f+'.*')
+            if len(found):
+                self.pbf.info("skipping "+found[0])
+            else:
+
+                if not os.path.exists(os.path.dirname(f)):
+                    os.makedirs(os.path.dirname(f))
+                    
+                # now fetch the video file
+                # read url, look at header to learn file ext, set that and open the output for writing and then spin
+
+                img = urllib2.urlopen(url)
+
+                try:
+                    ext = img.info().getheader('content-disposition').split('.')[-1]
+                except:
+                    self.pbf.info("failed to determine video file extension, using 'video' instead")
+                    ext = 'video'
+                    
                 self.vals['video_orig_path'] += '.'+ext
                 f += '.'+ext
-                
+
+                self.pbf.info("writing "+f)
+                out = open(f,'wb')
+                          
+                while True:
+                    buf = img.read(self.BUF_SIZE)
+                    if len(buf) == 0:
+                        break
+                    out.write(buf)
+
+                out.close()
+                img.close()          
 
         ## meta data
         f = os.path.join(self.pbf.options.photos_path,'info',self.id[-2:],self.id+".js")
         self.pbf.info("writing "+f)
         if not os.path.exists(os.path.dirname(f)):
-            os.makedirs(os.path.dirname(f)) ## TODO: deal with failures in dir creation
+            os.makedirs(os.path.dirname(f))
         out = open(f,'wb')
         # we use dateuploaded as the key along with ID because we want to sort on this later
         # it turns out Flickr photo IDs aren't strictly sequential
@@ -237,7 +281,7 @@ class PicBackFlick:
 
     def set_last_updated_timestamp(self):
         if not os.path.exists(os.path.dirname(self.options.last_updated_filename)):
-            os.makedirs(os.path.dirname(self.options.last_updated_filename)) ## TODO: deal with failures in dir creation
+            os.makedirs(os.path.dirname(self.options.last_updated_filename))
         out = open(self.options.last_updated_filename, "wb")
         out.write("%d\n" % self.start_time)
         out.close()
@@ -309,8 +353,8 @@ photos_path = ~/flickr_backups
                           help="rebuild the local photo javascript db file")
         
         ## TODO: implement single photo fetch by ID
-        ##parser.add_option("-s", "--single", dest="single_photo", metavar="PHOTO-ID",
-        ##                  help="update a single photo entry")
+        ##parser.add_option("-s", "--single", dest="single_photo", metavar="PHOTO-OR-VIDEO-ID",
+        ##                  help="update a single entry")
 
         ## TODO: implement public only feature
         ##parser.add_option("--public-photos-only", dest="public_photos_only", action="store_true", default=False,
@@ -405,7 +449,7 @@ photos_path = ~/flickr_backups
                 photo = Photo(self, id=p.attrib['id'])
 
                 photos_seen += 1
-                self.info("%d / %d : %s - %s" % (photos_seen, photo_count, photo.vals['title'], photo.vals['description']))
+                self.info("%d / %d : %s : %s - %s" % (photos_seen, photo_count, p.attrib['id'], photo.vals['title'], photo.vals['description']))
 
                 photo.save()
 

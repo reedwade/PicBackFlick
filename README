@@ -6,7 +6,7 @@ Features:
  - collects some additional data about each photo
  - locally web browsable content store
  - suitable for running via cron long term to keep collection current
-
+ - NEW! support for video
 
 This is an early but highly functional Flickr backup utility. It works
 fine for getting recently changed images and a small slice of the related
@@ -14,7 +14,6 @@ photo data. My intent is to expand this so that all related data is collected.
 
 
 Not yet but in the works:
- - support for video
  - better html templates
  - store all photo data Flickr can provide
  - sets, collections, galleries
@@ -67,6 +66,6 @@ PicBackFlick is licensed under the AGPL instead of GPL because it's plausibly us
 context.
 
 
-Reed Wade <reedwade@gmail.com>, 2011-04-03
+Reed Wade <reedwade@gmail.com>, 2011-04-16
 
 
