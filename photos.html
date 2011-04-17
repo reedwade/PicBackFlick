@@ -63,13 +63,25 @@ var image_list = []
 
 function set_page(page) {
     offset = (page-1) * page_size
+    $('.page_picker_button').css('color','#000')
+    $('.page_picker_button_'+page).css('color','red')
     $('#photo_spots').empty()
+    var max_uploaded_date;
+    var min_uploaded_date;
     for (i=0; i < page_size; i++) {
         p = image_list[i +offset]
         if (pbf[p]) {
             if (! pbf[p].id) {
-                pbf[p].id = p.split('_')[1]
+                a = p.split('_')
+                pbf[p].id = a[1]
+                pbf[p].uploaded_date = a[0]
             }
+            
+            if (i==0) {
+                max_uploaded_date = pbf[p].uploaded_date;
+            }
+            min_uploaded_date = pbf[p].uploaded_date;
+            
             idir = '/'+pbf[p].id.slice(-2)+'/'+pbf[p].id
             v = ''
             if (pbf[p].v) {
@@ -93,6 +105,13 @@ function set_page(page) {
                 '</div>')
         }
     }
+    if (min_uploaded_date) {
+        min_uploaded_date = new Date(1000*min_uploaded_date).toLocaleDateString()
+        max_uploaded_date = new Date(1000*max_uploaded_date).toLocaleDateString()
+        $('#date_range_info').html('page '+page+' of '+num_pages+', posted '+min_uploaded_date+' - '+max_uploaded_date)
+    } else {
+        $('#date_range_info').html('')
+    }
 }
 
 
@@ -109,7 +128,7 @@ $(function(){
     
     var s = ''
     for (i=1; i <= num_pages; i++) {
-        s += '<input type="button" value="'+i+'" class="page_picker_button" onclick="set_page('+i+')" />'
+        s += '<input type="button" value="'+i+'" class="page_picker_button page_picker_button_'+i+'" onclick="set_page('+i+')" />'
     }
     $('#page_buttons').append(s)
     set_page(1)
@@ -121,6 +140,7 @@ $(function(){
 <body>
 <h1>PicBackFlick</h1>
 <p><span id="message"></span></p>
+<p><span id="date_range_info"></span></p>
 
 <div id="page_buttons"></div>
 <div id="photo_spots"></div>
