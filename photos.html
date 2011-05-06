@@ -51,7 +51,7 @@ body {
 }
 </style>
 
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js" type="text/javascript"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js" type="text/javascript"></script>
 
 <script src="photo_db.js" type="text/javascript"></script>
 
@@ -100,7 +100,7 @@ function set_page(page) {
                 '<a href="img/o'+idir+'_o.'+pbf[p].o+'" target="_blank">[Orig]</a> '+
                 '<a href="http://flickr.com/photos/'+flickr_username+'/'+pbf[p].id+'" target="_blank">[Page]</a> '+
                 v+
-                '<a href="info/'+idir+'_full.js" target="_blank">[JSON]</a> '+
+                '<a href="info'+idir+'.html" target="_blank">[Deets]</a> '+
                 '</span>'+
                 '</div>')
         }
@@ -144,6 +144,10 @@ $(function(){
 
 <div id="page_buttons"></div>
 <div id="photo_spots"></div>
+
+<div id="dialog" title="Basic dialog">
+	<p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the 'x' icon.</p>
+</div>
 
 
 </body>

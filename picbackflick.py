@@ -45,6 +45,18 @@ import json
 from optparse import OptionParser
 import ConfigParser
 
+photo_page_template = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>%(title)s</title>
+<script src="%(id)s_full.js" type="text/javascript"></script>
+</head>
+<body>
+<pre>
+id = %(id)s
+</body>
+"""
+
 
 # Sometimes Flickr's API service doesn't want to talk to the world but that clears up pretty quickly.
 # So, try again instead of giving up. Add this decorator to get yourself 3 free failures.
@@ -110,8 +122,38 @@ class Photo:
             self.vals['description'] = ''
             
         dates = photo_info.find('dates')
-        self.vals['datetaken'] = dates.attrib['taken']
-        ## TODO: extract much more information from photo_info which we want to archive
+        self.vals['dates'] = dates.attrib
+        
+        self.vals['sort_key'] = dates.attrib['taken']+'_'+self.id
+
+        visibility = photo_info.find('visibility')
+        self.vals['ispublic'] = visibility.attrib
+
+        self.vals['tags'] = []
+        for a in photo_info.getiterator('tag'):
+            t = a.attrib
+            t['text'] = a.text
+            self.vals['tags'].append(t)
+        
+        self.vals['sets'] = []
+        self.vals['pools'] = []
+        contexts = self.pbf.flickr.photos_getAllContexts(photo_id=self.id)
+        if contexts.attrib['stat'] != 'ok':
+            raise RuntimeError("bad stat " + contexts.attrib['stat'])
+        for s in contexts.getiterator('set'):
+            self.vals['sets'].append(s.attrib)
+        for p in contexts.getiterator('pool'):
+            self.vals['pools'].append(p.attrib)
+        
+        self.vals['comments'] = []
+        comments = self.pbf.flickr.photos_comments_getList(photo_id=self.id)
+        if comments.attrib['stat'] != 'ok':
+            raise RuntimeError("bad stat " + comments.attrib['stat'])
+        for comment in comments.getiterator('comment'):
+            c = comment.attrib
+            c['text'] = comment.text
+            self.vals['comments'].append(c)
+        
         
         
     def get_image_url(self, size='o'):
@@ -248,10 +290,16 @@ class Photo:
         if not os.path.exists(os.path.dirname(f)):
             os.makedirs(os.path.dirname(f))
             
+        self.pbf.info("writing "+f+'.html')
+        out = open(f+'.html','wb')
+        out.write(photo_page_template % self.vals )
+        out.close()
+
         self.pbf.info("writing "+f+'_full.js')
         out = open(f+'_full.js','wb')
         out.write(json_full)
         out.close()
+        
         self.pbf.info("writing "+f+'_.js')
         out = open(f+'_.js','wb')
         out.write(json_simple)
