@@ -117,9 +117,12 @@ class Photo:
     def get_image_url(self, size='o'):
         """
         Returns the url for this image at the given size.
+        
+        The _ size is an odd one, the flickr size is '' (empty) but we like to have a
+        code we can use for naming directories and whatnot.
         """
 
-        valid_sizes = ['o','s','t','m','','z','b']
+        valid_sizes = ['o','s','t','m','_','z','b']
         if size not in valid_sizes:
             raise RuntimeError("bad option for size: %s must be one of %s" % (size, str(valid_sizes)) )
             
@@ -128,7 +131,8 @@ class Photo:
                 % (self.vals['farm'], self.vals['server'], self.id, self.vals['originalsecret'], self.vals['originalformat'])
         else:
             return "http://farm%s.static.flickr.com/%s/%s_%s%s%s.jpg" \
-                % (self.vals['farm'], self.vals['server'], self.id, self.vals['secret'], '' if size=='' else '_', size)
+                % (self.vals['farm'], self.vals['server'], self.id, self.vals['secret'], 
+                    '' if size=='_' else '_', '' if size=='_' else size)
     
     def get_image_path(self, size):
         """
@@ -369,7 +373,7 @@ photos_path = ~/flickr_backups
         
         self.options.last_updated_filename = os.path.join(self.options.photos_path,"last_updated")
         
-        self.options.store_image_sizes = ['s','b','o']
+        self.options.store_image_sizes = ['s','_','o']
         
 
         

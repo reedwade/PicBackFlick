@@ -62,13 +62,13 @@ var num_pages = 0
 var image_list = []
 
 function set_page(page) {
-    offset = (page-1) * page_size
+    var offset = (page-1) * page_size
     $('.page_picker_button').css('color','#000')
     $('.page_picker_button_'+page).css('color','red')
     $('#photo_spots').empty()
-    var max_uploaded_date;
-    var min_uploaded_date;
-    for (i=0; i < page_size; i++) {
+    var max_uploaded_date
+    var min_uploaded_date
+    for (var i=0; i < page_size; i++) {
         p = image_list[i +offset]
         if (pbf[p]) {
             if (! pbf[p].id) {
@@ -96,7 +96,7 @@ function set_page(page) {
                 '<span class="photo_title">'+pbf[p].t+'</span>'+
                 '<br/>'+
                 '<span class="photo_options">'+
-                '<a href="img/b'+idir+'_b.jpg" target="_blank">[Big]</a> '+
+                '<a href="img/_'+idir+'__.jpg" target="_blank">[500x size]</a> '+
                 '<a href="img/o'+idir+'_o.'+pbf[p].o+'" target="_blank">[Orig]</a> '+
                 '<a href="http://flickr.com/photos/'+flickr_username+'/'+pbf[p].id+'" target="_blank">[Page]</a> '+
                 v+
@@ -136,7 +136,7 @@ $(function(){
 });
 </script>
 
-
+</head>
 <body>
 <h1>PicBackFlick</h1>
 <p><span id="message"></span></p>
