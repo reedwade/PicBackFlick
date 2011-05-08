@@ -46,6 +46,7 @@ Quick Start Guide:
     5- Admire your efforts. Copy photos.html into ~/flickr_backups and view it in a web browser.
        (Make sure you're looking at the one in that directory.)
        You should see a thumbnail for each photo along with some other info.
+       See the 'Photo Browsing' section below for more.
        
     Run the script with -h to see more options. Run the script with no options and it will
     look for any new photos which have been added since the last time.
@@ -92,43 +93,57 @@ What Gets Fetched?
 
 Image Store
 
-    Images are placed in img/ under the photos_path directory. Under img/ are dictories for each image size (o,s,b for original, small and big).
+    Images are placed in img/ under the photos_path directory. Under img/ are dictories for 
+    each image size (o,s,_ for original, small and 500x).  Flickr doesn't have a size code 
+    for the the 500 max dimension size so we use _ . 
 
-    Under the size directory is another named using the last 2 characters of the photo id. The image is then named id_[osb].jpg (originals might have a different extension). 
+    Under the size directory is another named using the last 2 characters of the photo id. 
+    The image is then named id_[os_].jpg (originals might have a different extension). 
 
     Examples:
      ~/flickr_backups/img/s/89/123456789_s.jpg
+     ~/flickr_backups/img/_/89/123456789__.jpg
      ~/flickr_backups/img/o/95/552833895_o.png
      
-    See http://www.flickr.com/services/api/misc.urls.html for more about the image sizes available from Flickr
+    See http://www.flickr.com/services/api/misc.urls.html for more about the image sizes 
+    available from Flickr
     
-    Video files are stored under ~/flickr_backups/video/ per ~/flickr_backups/video/95/552833895.mov
+    Video files are stored under ~/flickr_backups/video/ per:
+        ~/flickr_backups/video/95/552833895.mov
+
     Videos will also have poster images in the img/ directories including an 'original'.
+
+    If you want more image sizes fetched, look for self.options.store_image_sizes and
+    valid_sizes in the code. In future, the sizes list will be a configuration option.
 
 
 Info Store
 
-    The detailed data for each photo is stored in an individual json file under ~/flickr_backups/info/ and
-    named per:
+    NB: it's possible this storage format could change but it seems to be working for now.
+    I can imagine some changes could be required to support the tagging and sets features
+    but maybe not.
+
+    The detailed data for each photo is stored in an individual json file under 
+    ~/flickr_backups/info/ and named per:
         ~/flickr_backups/info/95/552833895_full.js
     
-    Each photo also gets an expurgated json file which contains: title, video file extension (if there is
-    one), and the extension of the original photo url (if not jpg). It is named per:
+    Each photo also gets an expurgated json file which contains: title, video file extension 
+    (if there is one), and the extension of the original photo url (if not jpg). It is named 
+    per:
         ~/flickr_backups/info/95/552833895_.js
         
-    Each photo record file is not strictly a json file, the photo value is given a variable assignment in
-    an object array called pbf. The key is composed of the photo upload time and the photo
-    ID. This allows the list to be reliably sorted as they appear in your photo stream. Photo IDs are not
-    assigned in a strict time ordered sequence.
+    Each photo record file is not strictly a json file, the photo value is given a variable 
+    assignment in an object array called pbf. The key is composed of the photo upload time 
+    and the photo ID. This allows the list to be reliably sorted as they appear in your photo 
+    stream. Photo IDs are not assigned in a strict time ordered sequence.
     
         pbf['1300347013_5534286708'] = { "id": "5534286708", "t": "Dancing"... }
     
     The expurgated json files are also collected in a single file, ~/flickr_backups/photo_db.js
-    As the json files are created they are appended to this file. Updated image data might be repeated
-    but when evaluated the last one is the value used.
+    As the json files are created they are appended to this file. Updated image data might 
+    be repeated but when evaluated the last one is the value used.
     
     You can rebuild photo_db.js by running PicBackFlick with the -w command line option.
-
 
 
 Photo Browsing
@@ -136,11 +151,14 @@ Photo Browsing
     There are 2 photo browsing HTML files. One is a simple, standalone one of my own 
     creation - photos.html. Copy it to ~/flickr_backups then load it in a web browser.
 
-    The second browser uses the Galleriffic jquery plugin (included here). 
-    Copy photos-g.html and the gallerific directory to ~/flickr_backups then load photos-g.html 
-    in a web browser. At present, this browser doesn't work well with very large photo 
-    collections as it loads all thumbnails. MY collection of 5000+ sometimes works and 
-    sometimes doesn't. 
+    The second browser uses the Galleriffic jquery plugin. Copy photos-g.html and the 
+    gallerific directory to ~/flickr_backups then load photos-g.html in a web browser. 
+    At present, this browser doesn't work well with very large photo collections as it 
+    loads all thumbnail images in a (mostly hidden) list. My collection of 5000+ sometimes 
+    works and sometimes doesn't. 
+
+    With some changes, the Galleriffic interface could be made to perform well with large
+    sets.
 
     
 
