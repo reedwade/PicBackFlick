@@ -265,6 +265,9 @@ class Photo:
         f = os.path.join(self.pbf.options.photos_path,"photo_db.js")
         self.pbf.info("appending "+f)
         out = open(f,'ab')
+        if out.tell() == 0:
+            # is a new file, emit the header
+            out.write(self.pbf.get_photo_db_header())
         out.write(json_simple)
         out.close()
 
@@ -278,6 +281,9 @@ class PicBackFlick:
         if self.options.verbose:
             print message
     
+    def get_photo_db_header(self):
+        return "var pbf = {}\n"+\
+               "var flickr_username = '"+self.options.flickr_username+"'\n"
     
     def update_web_pages(self):
         """
@@ -292,8 +298,7 @@ class PicBackFlick:
         filename = os.path.join(self.options.photos_path,"photo_db.js")
         self.info("writing "+filename)
         out = open(filename, "wb")
-        out.write("var pbf = {}\n")
-        out.write("var flickr_username = '"+self.options.flickr_username+"'\n")
+        out.write(self.get_photo_db_header())
 
         # walk the info directory and collect all the file contents
         
