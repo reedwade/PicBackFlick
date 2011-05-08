@@ -1,6 +1,6 @@
 
 PicBackFlick -- my favourite Flickr back up utility so far
-Reed Wade <reedwade@gmail.com>, 2011-04-16
+Reed Wade <reedwade@gmail.com>, 2011-05-08
 
 Features
 
@@ -9,6 +9,7 @@ Features
     - locally web browsable content store
     - suitable for running via cron long term to keep collection current
     - support for video
+    - Galleriffic based photo browser w/slide show features
 
     This is an early but highly functional Flickr backup utility. It works
     fine for getting recently changed images and a small slice of the related
@@ -17,10 +18,8 @@ Features
 
 Not yet but in the works
 
-    - better html templates
     - store all photo data Flickr can provide
     - sets, collections, galleries
-    - etc
 
 Quick Start Guide:
 
@@ -132,7 +131,18 @@ Info Store
 
 
 
+Photo Browsing
 
+    There are 2 photo browsing HTML files. One is a simple, standalone one of my own 
+    creation - photos.html. Copy it to ~/flickr_backups then load it in a web browser.
+
+    The second browser uses the Galleriffic jquery plugin (included here). 
+    Copy photos-g.html and the gallerific directory to ~/flickr_backups then load photos-g.html 
+    in a web browser. At present, this browser doesn't work well with very large photo 
+    collections as it loads all thumbnails. MY collection of 5000+ sometimes works and 
+    sometimes doesn't. 
+
+    
 
 
 
