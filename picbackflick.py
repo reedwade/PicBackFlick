@@ -22,11 +22,10 @@ PicBackFlic is a Flickr backup utility.
 # along with PicBackFlic.  If not, see <http://www.gnu.org/licenses/>.
 
 
-## TODO: make this work for video
+
 ## TODO: implement public-only feature
 ## TODO: implement single photo fetch by ID
 ## TODO: better exception handling 
-
 
 ## PicBackFlic depends on the Python Flickr API (previously known as "Beej's Python Flickr API")
 ## as seen at: http://stuvel.eu/flickrapi
@@ -127,8 +126,13 @@ class Photo:
             raise RuntimeError("bad option for size: %s must be one of %s" % (size, str(valid_sizes)) )
             
         if size == 'o':
-            return "http://farm%s.static.flickr.com/%s/%s_%s_o.%s" \
-                % (self.vals['farm'], self.vals['server'], self.id, self.vals['originalsecret'], self.vals['originalformat'])
+            if self.vals.has_key('originalformat'):
+                return "http://farm%s.static.flickr.com/%s/%s_%s_o.%s" \
+                    % (self.vals['farm'], self.vals['server'], self.id, self.vals['originalsecret'], self.vals['originalformat'])
+            else:
+                print "TODO deal w/missing originals"
+                #return self.get_image_url('k')
+                return self.get_image_url('b')
         else:
             return "http://farm%s.static.flickr.com/%s/%s_%s%s%s.jpg" \
                 % (self.vals['farm'], self.vals['server'], self.id, self.vals['secret'], 
@@ -140,7 +144,11 @@ class Photo:
         """
         ext = 'jpg'
         if size == 'o':
-            ext = self.vals['originalformat']
+            if self.vals.has_key('originalformat'):
+                ext = self.vals['originalformat']
+            else:
+                print "TODO deal w/missing originals"
+                ext = "jpg"
         return "img/%s/%s/%s_%s.%s" % (size,  self.vals['id'][-2:], self.vals['id'], size, ext)
 
     @network_retry
@@ -241,7 +249,7 @@ class Photo:
         simple = {}
         simple['t'] = self.vals['title']
         # we only store if it's not jpg; jpg is the most likely format so we use that as a default to save space in the js db file
-        if self.vals['originalformat'] != 'jpg':
+        if self.vals.get('originalformat', 'jpg') != 'jpg':
             simple['o'] = self.vals['originalformat']
         if self.vals['v_ext']:
             simple['v'] = self.vals['v_ext']
@@ -370,6 +378,7 @@ photos_path = ~/flickr_backups
             self.api_secret = config.get('picbackflick', 'api_secret')
             self.options.photos_path = config.get('picbackflick', 'photos_path')
             self.options.flickr_username = config.get('picbackflick', 'flickr_username')
+            self.options.target_user_id = config.get('picbackflick', 'target_user_id')
         except ConfigParser.NoOptionError:
             print "These options must be set in", self.options.picbackflick_conf, ": api_key, api_secret, flickr_username, photos_path"
             sys.exit(1)
@@ -453,7 +462,10 @@ photos_path = ~/flickr_backups
         
     @network_retry
     def photos_recentlyUpdated(self, per_page, page, min_date):
-        return self.flickr.photos_recentlyUpdated(per_page=per_page, page=page, min_date=min_date)
+        if self.options.target_user_id:
+            return self.flickr.photos_search(user_id=self.options.target_user_id, per_page=per_page, page=page, min_upload_date=min_date)
+        else:
+            return self.flickr.photos_recentlyUpdated(per_page=per_page, page=page, min_date=min_date)
 
     def _get_recent_photos(self):
 
