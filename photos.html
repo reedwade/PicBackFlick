@@ -56,10 +56,10 @@ function set_page(page) {
 
 		            out.push(
 		            '<li>'+
-		                '<a class="thumb" name="leaf" href="img/_'+idir+'__.jpg" title="'+pbf[p].id+'">'+
-		                 '<img src="img/s'+idir+'_s.jpg" alt="'+pbf[p].id+'" /></a>'+
+		                '<a class="thumb" name="leaf" href="'+pbf[p]._+'" title="'+pbf[p].id+'">'+
+		                 '<img src="'+pbf[p].s+'" alt="'+pbf[p].id+'" /></a>'+
 		                '<div class="caption">'+
-		                '<div class="download"><a href="img/o'+idir+'_o.'+pbf[p].o+'" target="_blank">Original</a></div>'+
+		                '<div class="download"><a href="'+pbf[p].o+'" target="_blank">Original</a></div>'+
 					        '<div class="image-title">'+pbf[p].t+'</div>'+
 					        '<div class="image-desc">'+
 	                        '<a href="http://flickr.com/photos/'+flickr_username+'/'+pbf[p].id+'" target="_blank">Photo Page</a> '+

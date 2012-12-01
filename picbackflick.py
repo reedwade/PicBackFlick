@@ -29,25 +29,54 @@ PicBackFlick is a Flickr backup utility.
 
 
 
-## TODO: implement single photo fetch by ID
+## TODO: implement single photo fetch by ID or URL
 ## TODO: better exception handling 
-
-## PicBackFlick depends on the Python Flickr API (previously known as "Beej's Python Flickr API")
-## as seen at: http://stuvel.eu/flickrapi
-## If you have a recent Debian / Ubuntu / Mint setup you should be able to install it via--
-##   sudo apt-get install python-flickrapi
-## Otherwise, see the installation instructions at the web site above.
-
-import flickrapi
-
 import sys
 import os
 import time
 import urllib2
 import glob
 import json
+import datetime
 from optparse import OptionParser
 import ConfigParser
+
+try:
+    import flickrapi
+except Exception, e:
+    print "Failed to import flickrapi:", e
+    print """
+PicBackFlick depends on the Python Flickr API (previously known as "Beej's Python Flickr API")
+as seen at: http://stuvel.eu/flickrapi
+If you have a recent Debian / Ubuntu / Mint setup you should be able to install it via--
+  sudo apt-get install python-flickrapi
+Otherwise, see the installation instructions at the web site above.
+"""
+    sys.exit(1)
+
+
+sample_config_file = """
+[picbackflick]
+
+#
+# You must set the api_key and api_secret. Go to http://www.flickr.com/services/api/keys/apply/
+# and fill in the form to get yours.
+#
+## api_key = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+## api_secret = XXXXXXXXXXXXXXXX
+
+#
+# flickr_username is used to construct the photo page url
+#
+## flickr_username = reedwade
+
+#
+# photos_path is where your photos and information land
+#
+photos_path = ~/flickr_backups
+
+"""
+
 
 
 # Sometimes Flickr's API service doesn't want to talk to the world but that clears up pretty quickly.
@@ -104,12 +133,14 @@ class Photo(object):
         photo_info = photo_info.find('photo')
         # photo_info.attrib will contain: originalsecret, secret, farm, server, media, dateuploaded, originalformat (and more)
         self.vals = photo_info.attrib
+        # print self.vals
         
         self.vals['title'] = photo_info.find('title').text
         if self.vals['title'] == None:
             self.vals['title'] = ''
 
         sizes = self.pbf.flickr.photos_getSizes(photo_id=self.id)
+        self.vals['sizes'] = [size.attrib for size in sizes.find('sizes').findall('size')]
         #TODO:
         # the largest one seems to always be last in the list; this isn't really the best way to 
         # do this but it does seem to work (for now)
@@ -121,8 +152,43 @@ class Photo(object):
             
         dates = photo_info.find('dates')
         self.vals['datetaken'] = dates.attrib['taken']
-        ## TODO: extract much more information from photo_info which we want to archive
-        
+
+        # extract more information about the photo
+
+        #TODO rewrite above so we're not calling getInfo twice
+        self.vals['info'] = json.loads(self.pbf.flickr.photos_getInfo(photo_id=self.id, format='json')[len('jsonFlickrApi('):-1])
+
+        location = json.loads(self.pbf.flickr.photos_geo_getLocation(photo_id=self.id, format='json')[len('jsonFlickrApi('):-1])
+        if location.get('stat') == 'ok':
+            location = location.get('photo', {}).get('location')
+            if location:
+                self.vals['location'] = location
+
+        comments = json.loads(self.pbf.flickr.photos_comments_getList(photo_id=self.id, format='json')[len('jsonFlickrApi('):-1])
+        if comments.get('stat') == 'ok':
+            comments = comments.get('comments', {}).get('comment')
+            if comments:
+                self.vals['comments'] = comments
+
+        contexts = json.loads(self.pbf.flickr.photos_getAllContexts(photo_id=self.id, format='json')[len('jsonFlickrApi('):-1])
+        if contexts.get('stat') == 'ok' and len(contexts.keys()) >1:
+            del contexts['stat']
+            self.vals['contexts'] = contexts
+
+        #
+        # TODO make exif optional, it's large and maybe nobody cares. The data is in the original anyway.
+        #
+        # exif = json.loads(self.pbf.flickr.photos_getExif(photo_id=self.id, format='json')[len('jsonFlickrApi('):-1])
+        # if exif.get('stat') == 'ok' and len(exif.keys()) >1:
+        #     del exif['stat']
+        #     self.vals['exif'] = exif
+
+        favorites = json.loads(self.pbf.flickr.photos_getFavorites(photo_id=self.id, format='json')[len('jsonFlickrApi('):-1])
+        if favorites.get('stat') == 'ok' and favorites.get('photo',{}).get('person'):
+            del favorites['stat']
+            self.vals['favorites'] = favorites
+
+
         
     def get_image_url(self, size='o'):
         """
@@ -150,16 +216,24 @@ class Photo(object):
     
     def get_image_path(self, size):
         """
-        Returns the relative path for this image at the given size.
+        Where to save (or find after saving) this image locally.
         """
         ext = 'jpg'
         if size == 'o':
             if self.vals.has_key('originalformat'):
                 ext = self.vals['originalformat']
             else:
-                # print "TODO deal w/missing originals"
                 ext = "jpg"
-        return "img/%s/%s/%s_%s.%s" % (size,  self.vals['id'][-2:], self.vals['id'], size, ext)
+        dateuploaded = datetime.datetime.fromtimestamp(int(self.vals['dateuploaded']))
+        return "img/{year:04}-{month:02}/{day:02}/{size}/{id}_{size}.{ext}".format(
+            size=size,
+            ext=ext,
+            year=dateuploaded.year,
+            month=dateuploaded.month,
+            day=dateuploaded.day,
+            id=self.vals['id']
+            )
+        # return "img/%s/%s/%s_%s.%s" % (size,  self.vals['id'][-2:], self.vals['id'], size, ext)
 
     @network_retry
     def save(self):
@@ -253,14 +327,14 @@ class Photo(object):
 
         # we use dateuploaded as the key along with ID because we want to sort on this later
         # it turns out Flickr photo IDs aren't strictly sequential by time
-        json_full = "pbf['"+self.vals['dateuploaded']+"_"+self.id+"'] =\n "+json.dumps(self.vals)+"\n"
+        # json_full = "pbf['"+self.vals['dateuploaded']+"_"+self.id+"'] =\n "+json.dumps(self.vals)+"\n"
         
         # we're using short, ugly keys here to cut down on the size of the js db file
         simple = {}
         simple['t'] = self.vals['title']
-        # we only store if it's not jpg; jpg is the most likely format so we use that as a default to save space in the js db file
-        if self.vals.get('originalformat', 'jpg') != 'jpg':
-            simple['o'] = self.vals['originalformat']
+        simple['o'] = self.vals['image_o']
+        simple['s'] = self.vals['image_s']
+        simple['_'] = self.vals['image__']
         if self.vals['v_ext']:
             simple['v'] = self.vals['v_ext']
         
@@ -270,10 +344,10 @@ class Photo(object):
         if not os.path.exists(os.path.dirname(f)):
             os.makedirs(os.path.dirname(f))
             
-        self.pbf.info("writing "+f+'_full.js')
-        out = open(f+'_full.js','wb')
-        out.write(json_full)
-        out.close()
+        # self.pbf.info("writing "+f+'_full.js')
+        # out = open(f+'_full.js','wb')
+        # out.write(json_full)
+        # out.close()
         self.pbf.info("writing "+f+'_.js')
         out = open(f+'_.js','wb')
         out.write(json_simple)
@@ -288,6 +362,24 @@ class Photo(object):
             out.write(self.pbf.get_photo_db_header())
         out.write(json_simple)
         out.close()
+
+
+        # this is the non-gallery backup data
+        dateuploaded = datetime.datetime.fromtimestamp(int(self.vals['dateuploaded']))
+        f = "info/{year:04}-{month:02}/{day:02}/{id}.json".format(
+            year=dateuploaded.year,
+            month=dateuploaded.month,
+            day=dateuploaded.day,
+            id=self.vals['id']
+            )
+        f = os.path.join(self.pbf.options.photos_path, f)
+        if not os.path.exists(os.path.dirname(f)):
+            os.makedirs(os.path.dirname(f))
+        self.pbf.info("appending "+f)
+        out = open(f,'w')
+        out.write(json.dumps(self.vals, indent=2))
+        out.close()
+        
 
 class PicBackFlick(object):
 
@@ -337,7 +429,7 @@ class PicBackFlick(object):
             f.close()
             return t
         else:
-            # default value of minimum time stamp (it didn't like zero, 1 works tho)
+            # default value of minimum time stamp (Flickr didn't like zero, 1 works tho)
             return '1'
 
 
@@ -353,28 +445,8 @@ class PicBackFlick(object):
     def load_config_file(self):
     
         if not os.path.exists(self.options.picbackflick_conf):
-            f = open(self.options.picbackflick_conf, "wb")
-            f.write("""
-[picbackflick]
-
-#
-# You must set the api_key and api_secret. Go to http://www.flickr.com/services/api/keys/apply/
-# and fill in the form to get yours.
-#
-## api_key = XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-## api_secret = XXXXXXXXXXXXXXXX
-
-#
-# flickr_username is used to construct the photo page url
-#
-## flickr_username = reedwade
-
-#
-# photos_path is where your photos and information land
-#
-photos_path = ~/flickr_backups
-
-""")
+            f = open(self.options.picbackflick_conf, "w")
+            f.write(sample_config_file)
             f.close()
             print self.options.picbackflick_conf, "doesn't exist, a new one has been created for you which you must now edit"
             sys.exit(1)
@@ -413,7 +485,8 @@ photos_path = ~/flickr_backups
                           help="how many days ago to look backward, default is to the start of your photostream unless timestamp file is found")
         parser.add_option("-q", "--quiet",          dest="verbose",            action="store_false", default=True,
                           )
-        parser.add_option("-f", "--config-file",    dest="picbackflick_conf",   metavar="FILE", default="~/.picbackflick.conf",
+        parser.add_option("-f", "--config-file",    dest="picbackflick_conf",  metavar="CONFIG-FILE",
+                                                    help="(default: %default)", default="~/.picbackflick.conf",
                           )
         parser.add_option("-i", "--ids-only",       dest="ids_only",           action="store_true", default=False,
                           help="get a list of updated photo IDs only")
@@ -532,6 +605,10 @@ photos_path = ~/flickr_backups
         return photo_count
 
 if __name__ == "__main__":
-    p = PicBackFlick()
-    p.get_recent_photos()
+
+    try:
+        p = PicBackFlick()
+        p.get_recent_photos()
+    except KeyboardInterrupt:
+        pass
 

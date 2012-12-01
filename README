@@ -2,33 +2,18 @@
 PicBackFlick -- my fav Flickr back up utility so far
 ----------------------------------------------------
 
-What is it for?
-
-  - automated backups of your Flickr content
-  - can also be used to collect other Flickr users content
-
-
-
-----------------------------------------------------
 
 Features
 
     - fetch recently changed (or all) images
-    - collects some additional data about each photo
+    - saves original size and, optionally, scaled images provided by Flickr
+    - collects additional data about each photo (location, comments, tags, etc)
     - locally web browsable content store
     - suitable for running via cron long term to keep collection current
     - support for video
     - Galleriffic based photo browser w/slide show features
+    - can also be used to collect other Flickr users content
 
-    This is an early but highly functional Flickr backup utility. It works
-    fine for getting recently changed images and a small slice of the related
-    photo data. My intent is to expand this so that all related data is collected.
-
-
-Not yet but in the works
-
-    - store all photo data Flickr can provide
-    - sets, collections, galleries
 
 Quick Start Guide:
 
@@ -43,6 +28,7 @@ Quick Start Guide:
     3- Set up your config file. picbackflick.py will create an example for you:
 
          bash$  ./picbackflick.py -d 3
+
          ~/.picbackflick.conf doesn't exist, a new one has been created for you which you must now edit
 
     4- Do the trick. This will grab any photos updated in the last 3 days. 
@@ -52,10 +38,15 @@ Quick Start Guide:
        The first time you run the application it will walk you through an authorisation step
        which is described here: http://stuvel.eu/media/flickrapi-docs/documentation/#authentication
 
-    5- Admire your efforts. Copy photos.html into ~/flickr_backups and view it in a web browser.
-       (Make sure you're looking at the one in that directory.)
+    5- Admire your efforts.
+
+         bash$ cp -r gallerific photos.html ~/flickr_backups
+         bash$ firefox ~/flickr_backups/photos.html
+
        You should see a thumbnail for each photo along with some other info.
        See the 'Photo Browsing' section below for more.
+
+       Your photos can be found in ~/flickr_backups/img/ organised by date of upload.
        
     Run the script with -h to see more options. Run the script with no options and it will
     look for any new photos which have been added since the last time.
@@ -102,23 +93,23 @@ What Gets Fetched?
 
 Image Store
 
-    Images are placed in img/ under the photos_path directory. Under img/ are dictories for 
-    each image size (o,s,_ for original, small and 500x).  Flickr doesn't have a size code 
-    for the the 500 max dimension size so we use _ . 
+    Images are placed in img/ under the photos_path directory. Under img/ are directories for 
+    each month then each image size (o,s,_ for original, small and 500x). Flickr doesn't have a
+    size code for the the 500 max dimension size so we use _ . 
 
-    Under the size directory is another named using the last 2 characters of the photo id. 
-    The image is then named id_[os_].jpg (originals might have a different extension). 
 
     Examples:
-     ~/flickr_backups/img/s/89/123456789_s.jpg
-     ~/flickr_backups/img/_/89/123456789__.jpg
-     ~/flickr_backups/img/o/95/552833895_o.png
+     ~/flickr_backups/img/2012-12/s/123456789_s.jpg
+     ~/flickr_backups/img/2012-12/_/123456789__.jpg
+     ~/flickr_backups/img/2012-12/o/552833895_o.png
      
     See http://www.flickr.com/services/api/misc.urls.html for more about the image sizes 
     available from Flickr
     
     Video files are stored under ~/flickr_backups/video/ per:
         ~/flickr_backups/video/95/552833895.mov
+
+        (TODO confirm that naming for videos, should switch to date scheme.)
 
     Videos will also have poster images in the img/ directories including an 'original'.
 
@@ -127,6 +118,9 @@ Image Store
 
 
 Info Store
+
+    TODO: change all this
+    TODO: describe new full json file format and location
 
     NB: it's possible this storage format could change but it seems to be working for now.
     I can imagine some changes could be required to support the tagging and sets features
@@ -157,19 +151,18 @@ Info Store
 
 Photo Browsing
 
-    There are 2 photo browsing HTML files. One is a simple, standalone one of my own 
-    creation - photos.html. Copy it to ~/flickr_backups then load it in a web browser.
+    You can browse the photos directly by visiting them at:
 
-    The second browser uses the Galleriffic jquery plugin. Copy photos-g.html and the 
-    gallerific directory to ~/flickr_backups then load photos-g.html in a web browser. 
+    ~/flickr_backups/year-month/day/size-code/id_size-code.ext
+
+    The Galleriffic jquery plugin is also available. Copy photos.html and the 
+    gallerific directory to ~/flickr_backups then load photo.html in a web browser. 
+
     At present, this browser doesn't work well with very large photo collections as it 
-    loads all thumbnail images in a (mostly hidden) list. My collection of 5000+ sometimes 
+    loads all thumbnail images in a (mostly hidden) list. My collection of 6000+ sometimes 
     works and sometimes doesn't. 
 
     With some changes, the Galleriffic interface could be made to perform well with large
     sets.
-
-    
-
 
 
