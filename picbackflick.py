@@ -1,35 +1,40 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-PicBackFlic is a Flickr backup utility.
+PicBackFlick is a Flickr backup utility.
 """
-
-# picbackflic.py - Reed Wade <reedwade@gmail.com>, 2011-04-03
+# picbackflick.py - Reed Wade <reedwade@gmail.com>
 #
-# This file is part of PicBackFlic.
+# This file is part of PicBackFlick.
 #
-# PicBackFlic is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Copyright (C) 2012 Reed Wade <reedwade@gmail.com>
 #
-# PicBackFlic is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
 #
-# You should have received a copy of the GNU Affero General Public License
-# along with PicBackFlic.  If not, see <http://www.gnu.org/licenses/>.
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-## TODO: implement public-only feature
 ## TODO: implement single photo fetch by ID
 ## TODO: better exception handling 
 
-## PicBackFlic depends on the Python Flickr API (previously known as "Beej's Python Flickr API")
+## PicBackFlick depends on the Python Flickr API (previously known as "Beej's Python Flickr API")
 ## as seen at: http://stuvel.eu/flickrapi
-## If you have a recent Debian / Ubuntu setup you should be able to install it via--
+## If you have a recent Debian / Ubuntu / Mint setup you should be able to install it via--
 ##   sudo apt-get install python-flickrapi
 ## Otherwise, see the installation instructions at the web site above.
 
@@ -72,7 +77,7 @@ def network_retry(fn):
     return wrapped
 
 
-class Photo:
+class Photo(object):
     """
     This class represents a single photo or video.
         p = Photo(picbackflick_instance, flickr_photo_id)
@@ -103,7 +108,13 @@ class Photo:
         self.vals['title'] = photo_info.find('title').text
         if self.vals['title'] == None:
             self.vals['title'] = ''
-        
+
+        sizes = self.pbf.flickr.photos_getSizes(photo_id=self.id)
+        #TODO:
+        # the largest one seems to always be last in the list; this isn't really the best way to 
+        # do this but it does seem to work (for now)
+        self.biggest_URL = [size for size in sizes.find('sizes').findall('size')][-1].attrib.get('source')
+
         self.vals['description'] = photo_info.find('description').text
         if self.vals['description'] == None:
             self.vals['description'] = ''
@@ -121,7 +132,7 @@ class Photo:
         code we can use for naming directories and whatnot.
         """
 
-        valid_sizes = ['o','s','t','m','_','z','b']
+        valid_sizes = ['o','s','t','m','_','z','b','k']
         if size not in valid_sizes:
             raise RuntimeError("bad option for size: %s must be one of %s" % (size, str(valid_sizes)) )
             
@@ -130,9 +141,8 @@ class Photo:
                 return "http://farm%s.static.flickr.com/%s/%s_%s_o.%s" \
                     % (self.vals['farm'], self.vals['server'], self.id, self.vals['originalsecret'], self.vals['originalformat'])
             else:
-                print "TODO deal w/missing originals"
-                #return self.get_image_url('k')
-                return self.get_image_url('b')
+                # we don't have access to the original, return the largest image available
+                return self.biggest_URL
         else:
             return "http://farm%s.static.flickr.com/%s/%s_%s%s%s.jpg" \
                 % (self.vals['farm'], self.vals['server'], self.id, self.vals['secret'], 
@@ -147,7 +157,7 @@ class Photo:
             if self.vals.has_key('originalformat'):
                 ext = self.vals['originalformat']
             else:
-                print "TODO deal w/missing originals"
+                # print "TODO deal w/missing originals"
                 ext = "jpg"
         return "img/%s/%s/%s_%s.%s" % (size,  self.vals['id'][-2:], self.vals['id'], size, ext)
 
@@ -279,7 +289,7 @@ class Photo:
         out.write(json_simple)
         out.close()
 
-class PicBackFlick:
+class PicBackFlick(object):
 
     def __init__(self):
         self.start_time = int(time.time())
@@ -378,10 +388,15 @@ photos_path = ~/flickr_backups
             self.api_secret = config.get('picbackflick', 'api_secret')
             self.options.photos_path = config.get('picbackflick', 'photos_path')
             self.options.flickr_username = config.get('picbackflick', 'flickr_username')
-            self.options.target_user_id = config.get('picbackflick', 'target_user_id')
         except ConfigParser.NoOptionError:
             print "These options must be set in", self.options.picbackflick_conf, ": api_key, api_secret, flickr_username, photos_path"
             sys.exit(1)
+
+        try:
+            self.options.target_user_id = config.get('picbackflick', 'target_user_id')
+        except ConfigParser.NoOptionError:
+            self.options.target_user_id = None
+
         
         self.options.photos_path = os.path.expanduser(self.options.photos_path)
         
@@ -519,9 +534,4 @@ photos_path = ~/flickr_backups
 if __name__ == "__main__":
     p = PicBackFlick()
     p.get_recent_photos()
-    
-        
-        
-        
-        
-        
+
